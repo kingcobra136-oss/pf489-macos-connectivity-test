@@ -1,0 +1,17 @@
+name: PF489 macOS connection diagnostic
+on:
+  push:
+    paths:
+      - pf489_probe.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  connectivity:
+    runs-on: macos-15
+    timeout-minutes: 3
+    steps:
+      - name: Check out public test-only repository
+        uses: actions/checkout@v4
+      - name: Test DNS, TCP, TLS and HTTP connectivity only
+        run: python3 pf489_probe.py
