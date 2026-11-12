@@ -2,10 +2,11 @@
 """One-shot public-safe Playwright proxy test; no login, booking, cancellation, or LINE."""
 import asyncio
 import json
+import os
 from urllib.parse import urlparse, parse_qs
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
-ORIGIN = "https://pf489-vercel-connectivity-test-github-usage.vercel.app"
+ORIGIN = os.environ.get("PF489_TEST_ORIGIN", "https://pf489-vercel-connectivity-test-github-usage.vercel.app")
 ALLOWED_POSTS = {
     "kunitachi": "/kunitachi/web/Wg_ModeSelect.aspx",
     "kokubunji": "/Kokubunji/WebR/Home/WgR_ModeSelect",
@@ -79,7 +80,14 @@ async def test_city(browser, city):
 
     initial = ORIGIN + ("/kunitachi/web/" if city == "kunitachi" else "/Kokubunji/WebR/")
     try:
-        response = await page.goto(initial, wait_until="domcontentloaded", timeout=30000)
+        response = await page.goto(initial, wait_until="commit" if city == "kokubunji" else "domcontentloaded", timeout=30000)
+        if city == "kokubunji":
+            # Establish the official entry session, then navigate explicitly
+            # to the mode-select page instead of waiting on StartPage scripts.
+            await page.locator("body").wait_for(state="attached", timeout=10000)
+            mode_url = ORIGIN + "/Kokubunji/WebR/Home/WgR_ModeSelect"
+            response = await page.goto(mode_url, wait_until="domcontentloaded", timeout=20000)
+            await page.locator("#category_30").wait_for(state="visible", timeout=15000)
         status = response.status if response else None
         if status != 200:
             raise RuntimeError(f"Entry did not reach HTTP 200: status={status}")
@@ -121,7 +129,8 @@ async def main():
         browser = await p.chromium.launch(headless=True)
         try:
             passed = []
-            for city in ("kunitachi", "kokubunji"):
+            for city in (("kokubunji",) if os.environ.get("PF489_TEST_CITY") == "kokubunji"
+                         else ("kunitachi", "kokubunji")):
                 passed.append(await test_city(browser, city))
             print("PF489_RELAY_CONCLUSION " + json.dumps({"passed":all(passed),
                 "city_results":passed}, ensure_ascii=False), flush=True)
