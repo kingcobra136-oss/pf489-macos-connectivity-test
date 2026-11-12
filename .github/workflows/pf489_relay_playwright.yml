@@ -1,0 +1,26 @@
+name: PF489 read-only relay Playwright single test
+on:
+  push:
+    paths:
+      - .github/workflows/pf489_relay_playwright.yml
+
+permissions:
+  contents: read
+
+jobs:
+  relay_readonly_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out public test repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned Playwright
+        run: python -m pip install --disable-pip-version-check playwright==1.53.0
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Run read-only PF489 relay navigation test
+        run: python pf489_relay_playwright_test.py
