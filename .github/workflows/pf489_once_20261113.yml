@@ -1,0 +1,61 @@
+name: PF489 one-shot read-only relay test (self-remove)
+on:
+  push:
+    paths:
+      - .github/workflows/pf489_once_20261113.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pf489-once-20261113
+  cancel-in-progress: false
+
+jobs:
+  single_test:
+    if: github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check out the public diagnostic repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Use unprotected production alias for isolated Vercel test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("pf489_relay_playwright_test.py")
+          original = path.read_text(encoding="utf-8")
+          old = "https://pf489-vercel-connectivity-test-github-usage.vercel.app"
+          new = "https://pf489-vercel-connectivity-test.vercel.app"
+          assert original.count(old) == 1, "Unexpected test file, aborting"
+          path.write_text(original.replace(old, new), encoding="utf-8")
+          print("Using test project's production alias. Original repository file unchanged.")
+          PY
+
+      - name: Install Playwright Chromium
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.53.0
+          python -m playwright install --with-deps chromium
+
+      - name: Run one read-only browser and sports-selection POST test
+        run: python pf489_relay_playwright_test.py
+
+      - name: Immediately remove this temporary workflow (pass or fail)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target=".github/workflows/pf489_once_20261113.yml"
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${target}" --jq '.sha')"
+          gh api --method DELETE "repos/${GITHUB_REPOSITORY}/contents/${target}" \
+            -f "message=Remove one-shot PF489 test workflow immediately after use" \
+            -f "sha=${sha}" \
+            -f "branch=main" >/dev/null
+          echo "ONE_SHOT_WORKFLOW_REMOVED"
