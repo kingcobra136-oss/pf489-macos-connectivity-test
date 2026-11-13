@@ -18,7 +18,7 @@ FACILITY = "戸倉第二テニスコート"
 TIMES = (("09:00", "11:00"), ("11:00", "13:00"),
          ("13:00", "15:00"), ("15:00", "17:00"))
 COURTS = frozenset("ABCD")
-MAX_CANDIDATES = 12
+MAX_CANDIDATES = 56
 MAX_RESPONSE_SIZE = 250_000
 
 class IncompleteScan(RuntimeError):
