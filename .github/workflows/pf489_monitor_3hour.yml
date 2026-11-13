@@ -1,0 +1,38 @@
+name: PF489 Tennis Monitor / three-hour configuration (disabled)
+# Cron plan: 17 */3 * * * (UTC), matching 02:17, 05:17, 08:17,
+# 11:17, 14:17, 17:17, 20:17, 23:17 Japan time.
+# RULE GATE: Scheduled executions require specific authorization
+# per run. DO NOT uncomment the schedule below without that approval.
+# on:
+#   schedule:
+#     - cron: '17 */3 * * *'
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Explicit authorization for this one test run'
+        required: true
+        default: 'DO_NOT_RUN'
+        type: choice
+        options:
+          - DO_NOT_RUN
+          - RUN_PF489_READ_ONLY_ONCE
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: pf489-one-authorized-run
+  cancel-in-progress: false
+
+jobs:
+  verify_readonly:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm == 'RUN_PF489_READ_ONLY_ONCE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout public scan client only
+        uses: actions/checkout@v4
+      - name: Verify Kokubunji calendar and Kunitachi summary (no LINE)
+        run: python3 pf489_monitor_3hour_client_20261113.py
