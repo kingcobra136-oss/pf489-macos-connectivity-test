@@ -1,11 +1,11 @@
-name: PF489 Tennis Monitor / three-hour configuration (disabled)
-# Cron plan: 17 */3 * * * (UTC), matching 02:17, 05:17, 08:17,
-# 11:17, 14:17, 17:17, 20:17, 23:17 Japan time.
-# RULE GATE: Scheduled executions require specific authorization
-# per run. DO NOT uncomment the schedule below without that approval.
+name: PF489 Tennis Monitor / prior twice-daily schedule (disabled)
+# Restored from the original Kunitachi and Kokubunji GitHub configurations:
+# Both cities: 08:07 and 20:07 JST (23:07 and 11:07 UTC).
+# RULE GATE: Scheduled executions require explicit authorization.
+# This schedule is documented here but is NOT activated.
 # on:
 #   schedule:
-#     - cron: '17 */3 * * *'
+#     - cron: '7 11,23 * * *'
 on:
   workflow_dispatch:
     inputs:
