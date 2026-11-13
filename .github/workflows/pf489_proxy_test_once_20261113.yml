@@ -1,0 +1,51 @@
+name: PF489 single authorized OIDC relay test
+on:
+  push:
+    paths:
+      - '.github/workflows/pf489_proxy_test_once_20261113.yml'
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: pf489-proxy-once-20261113
+  cancel-in-progress: false
+jobs:
+  test_relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Confirm OIDC relay can read official site without credentials
+        env:
+          RELAY_URL: https://pf489-vercel-connectivity-test.vercel.app/api/pf489-proxy.mjs
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.error, urllib.parse, urllib.request
+          audience = 'pf489-tennis-monitor-oidc-v2'
+          q = urllib.parse.urlencode({'audience': audience})
+          link = os.environ['ACTIONS_ID_TOKEN_REQUEST_URL']
+          token_request = urllib.request.Request(link + ('&' if '?' in link else '?') + q,
+              headers={'Authorization':'Bearer '+os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']})
+          with urllib.request.urlopen(token_request,timeout=10) as r:
+              token = json.load(r)['value']
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args,**kwargs): return None
+          opener = urllib.request.build_opener(NoRedirect)
+          targets = [
+              ('KUNITACHI','https://www4.pf489.com/kunitachi/web/Wg_ModeSelect.aspx'),
+              ('KOKUBUNJI','https://www4.pf489.com/Kokubunji/WebR/'),
+          ]
+          for city,target in targets:
+              req=urllib.request.Request(os.environ['RELAY_URL'],headers={
+                  'Authorization':'Bearer '+token,'X-PF489-Target':target})
+              try:
+                  r=opener.open(req,timeout=28)
+              except urllib.error.HTTPError as e:
+                  r=e
+              status=r.status
+              verified=r.headers.get('X-PF489-Proxy-Verified')=='1'
+              body=r.read(1024)
+              print(city,'upstream_status',status,'verified',verified,'bytes_observed',len(body),flush=True)
+              if not verified or status not in (200,301,302,303,307,308):
+                  raise SystemExit('PF489_RELAY_INCOMPLETE')
+          print('PF489_RELAY_READ_ONLY_PASS',flush=True)
+          PY
