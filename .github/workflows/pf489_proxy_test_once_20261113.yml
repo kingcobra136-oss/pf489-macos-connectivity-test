@@ -1,8 +1,6 @@
 name: PF489 single authorized OIDC relay test
 on:
-  push:
-    paths:
-      - '.github/workflows/pf489_proxy_test_once_20261113.yml'
+  workflow_dispatch:
 permissions:
   contents: read
   id-token: write
